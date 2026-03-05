@@ -52,8 +52,7 @@
     const points = [];
     const pointCount = 130;
     let mouse = { x: -1000, y: -1000 };
-    const connectionProgress = {};
-
+    
     // Custom Color: rgb(68, 70, 152)
     const lineColor = "68, 70, 152";
 
@@ -67,10 +66,9 @@
     }
 
     function drawGlow() {
-        const glowRadius = 250;
+        const glowRadius = 300;
         const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, glowRadius);
-        // Glow also uses the custom color at very low opacity
-        gradient.addColorStop(0, `rgba(${lineColor}, 0.08)`);
+        gradient.addColorStop(0, `rgba(${lineColor}, 0.12)`); // Slightly stronger glow
         gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, width, height);
@@ -87,13 +85,17 @@
             if (p.y < 0 || p.y > height) p.vy *= -1;
 
             let dist = Math.sqrt((p.x - mouse.x) ** 2 + (p.y - mouse.y) ** 2);
-            if (dist < 220) {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-                // Points use the new color
-                ctx.fillStyle = `rgba(${lineColor}, ${1 - dist / 220})`;
-                ctx.fill();
+            
+            // Calculate Point Opacity: Base of 0.15, increasing to 1.0 near mouse
+            let pointAlpha = 0.15; 
+            if (dist < 250) {
+                pointAlpha = 0.15 + (1 - dist / 250) * 0.85;
             }
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${lineColor}, ${pointAlpha})`;
+            ctx.fill();
         });
 
         for (let i = 0; i < pointCount; i++) {
@@ -104,33 +106,22 @@
                 const dy = p1.y - p2.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < 85) {
-                    const key = `${i}-${j}`;
-                    const mDist1 = Math.sqrt((p1.x - mouse.x) ** 2 + (p1.y - mouse.y) ** 2);
-                    const mDist2 = Math.sqrt((p2.x - mouse.x) ** 2 + (p2.y - mouse.y) ** 2);
-
-                    if (connectionProgress[key] === undefined) connectionProgress[key] = 0;
-
-                    if (mDist1 < 220 && mDist2 < 220) {
-                        connectionProgress[key] = Math.min(1, connectionProgress[key] + 0.15);
-                    } else {
-                        connectionProgress[key] = Math.max(0, connectionProgress[key] - 0.1);
+                if (distance < 100) {
+                    const mDist = Math.sqrt(((p1.x + p2.x)/2 - mouse.x) ** 2 + ((p1.y + p2.y)/2 - mouse.y) ** 2);
+                    
+                    // Calculate Line Opacity: Base visibility + Proximity boost
+                    let lineAlpha = (1 - distance / 100) * 0.1; // Light base connection
+                    
+                    if (mDist < 200) {
+                        lineAlpha += (1 - mDist / 200) * 0.6; // Deepen when mouse is near
                     }
 
-                    const progress = connectionProgress[key];
-
-                    if (progress > 0) {
-                        const targetX = p1.x + (p2.x - p1.x) * progress;
-                        const targetY = p1.y + (p2.y - p1.y) * progress;
-
-                        ctx.beginPath();
-                        // Lines use the new color: rgb(68, 70, 152)
-                        ctx.strokeStyle = `rgba(${lineColor}, ${(1 - distance / 85) * progress})`;
-                        ctx.lineWidth = 1;
-                        ctx.moveTo(p1.x, p1.y);
-                        ctx.lineTo(targetX, targetY);
-                        ctx.stroke();
-                    }
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(${lineColor}, ${lineAlpha})`;
+                    ctx.lineWidth = 0.8;
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
                 }
             }
         }
